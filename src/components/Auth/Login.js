@@ -1,5 +1,7 @@
 import React from "react";
 import useFormValidation from "./useFormValidation";
+import validateLogin from "./validateLogin";
+import firebase from "../../firebase/firebase";
 
 const INITIAL_STATE = {
   name: "",
@@ -8,11 +10,32 @@ const INITIAL_STATE = {
 };
 
 function Login(props) {
-  const { handleSubmit, handleChange, values } = useFormValidation(
-    INITIAL_STATE
-  );
+  const {
+    handleSubmit,
+    handleBlur,
+    handleChange,
+    values,
+    errors,
+    isSubmitting,
+  } = useFormValidation(INITIAL_STATE, validateLogin, authenticateUser);
 
   const [login, setLogin] = React.useState(true);
+  const [firebaseError, setFirebaseError] = React.useState(null);
+
+  async function authenticateUser() {
+    const { name, email, password } = values;
+
+    try {
+      login
+        ? await firebase.login(email, password)
+        : await firebase.register(name, email, password);
+
+      props.history.push("/");
+    } catch (e) {
+      console.error("Authentication Error", e);
+      setFirebaseError(e.message);
+    }
+  }
 
   return (
     <div>
@@ -30,19 +53,26 @@ function Login(props) {
         )}
         <input
           onChange={handleChange}
+          onBlur={handleBlur}
           value={values.email}
           name="email"
           type="email"
+          className={errors.email && "error-input"}
           placeholder="Your email"
           autoComplete="off"
         />
+        {errors.email && <p className="error-text">{errors.email}</p>}
         <input
           onChange={handleChange}
+          onBlur={handleBlur}
           value={values.password}
           name="password"
+          className={errors.password && "error-input"}
           type="password"
           placeholder="Choose a secure password"
         />
+        {errors.password && <p className="error-text">{errors.password}</p>}
+        {firebaseError && <p className="error-text">{firebaseError}</p>}
         <div className="flex mt3">
           <button type="submit" className="button pointer mr2">
             Submit
@@ -51,6 +81,7 @@ function Login(props) {
             type="button"
             className="pointer button"
             onClick={() => setLogin((prevLogin) => !prevLogin)}
+            style={{ background: isSubmitting ? "grey" : "orange" }}
           >
             {login ? "need to create an account?" : "already have an account?"}
           </button>
